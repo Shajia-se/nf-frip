@@ -1,49 +1,85 @@
-# History files
-.Rhistory
-.Rapp.history
+# -------------------------
+# NEXTFLOW PROJECT IGNORE
+# -------------------------
 
-# Session Data files
-.RData
-.RDataTmp
+# Nextflow working directories
+work/
+.nextflow*
+.cache/
+*.nf.cache
+*.command.*
+*.log
+pipeline_info/
+timeline.html
+report.html
+dag.svg
+trace.txt
 
-# User-specific files
-.Ruserdata
+# Output directories (modify to your project names)
+results/
+output/
+frip_output/
+bwa_output/
+fastqc_output/
+fastp_output/
+cutadapt_output/
+multiqc_output/
+picard_output/
+chipfilter_output/
+macs3_output/
+demo_data/
+idr_output/
+homer_output/
+diffbind_output/
+bigwig_output/
+chipseeker_output/
+deeptools_output/
 
-# Example code in package build process
-*-Ex.R
 
-# Output files from R CMD build
-/*.tar.gz
+# Large data folders
+data/
+raw_data/
+fastq/
+fastq_raw/
+reference/
+genomes/
+indices/
 
-# Output files from R CMD check
-/*.Rcheck/
+# Local test data
+test_data/
 
-# RStudio files
-.Rproj.user/
+# Temporary run folders
+tmp/
+temp/
 
-# produced vignettes
-vignettes/*.html
-vignettes/*.pdf
+# Container images (Docker/Singularity)
+*.sif
+*.img
+*.simg
+*.sqsh
 
-# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
-.httr-oauth
+# Conda envs
+.nf-conda/
+.conda/
+conda_env/
 
-# knitr and R markdown default cache directories
-*_cache/
-/cache/
+# -------------------------
+# PYTHON & GENERAL (kept minimal)
+# -------------------------
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints
+configs/.ipynb_checkpoints
 
-# Temporary files created by R markdown
-*.utf8.md
-*.knit.md
+# Virtual environments
+.env
+.venv
+env/
+venv/
 
-# R Environment Variables
-.Renviron
-
-# pkgdown site
-docs/
-
-# translation temp files
-po/*~
-
-# RStudio Connect folder
-rsconnect/
+# -------------------------
+# EDITOR / OS
+# -------------------------
+.DS_Store
+.idea/
+.vscode/
