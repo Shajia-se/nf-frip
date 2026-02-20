@@ -20,8 +20,21 @@ process compute_frip {
   """
   set -euo pipefail
 
+  bam_ref=\$(samtools idxstats ${bam} | awk '\$1 != "*" {print \$1; exit}')
+  peak_ref=\$(awk 'NR==1{print \$1; exit}' ${peaks})
+  peaks_norm="peaks.norm.bed"
+
+  # Harmonize contig naming between BAM and peak file (chr1 vs 1)
+  if [[ "\$bam_ref" == chr* && "\$peak_ref" != chr* ]]; then
+    awk 'BEGIN{OFS="\\t"} {if(\$1 !~ /^chr/) \$1="chr"\$1; print}' ${peaks} > "\$peaks_norm"
+  elif [[ "\$bam_ref" != chr* && "\$peak_ref" == chr* ]]; then
+    awk 'BEGIN{OFS="\\t"} {sub(/^chr/,"",\$1); print}' ${peaks} > "\$peaks_norm"
+  else
+    cp ${peaks} "\$peaks_norm"
+  fi
+
   total_mapped=\$(samtools view -c -F 260 ${bam})
-  in_peaks=\$(bedtools intersect -u -abam ${bam} -b ${peaks} | samtools view -c -)
+  in_peaks=\$(bedtools intersect -u -abam ${bam} -b "\$peaks_norm" | samtools view -c -)
 
   frip=0
   if [[ "\$total_mapped" -gt 0 ]]; then
