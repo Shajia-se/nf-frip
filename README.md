@@ -17,6 +17,12 @@ Provide `--frip_samplesheet` CSV with columns:
 sample_id,bam,peaks
 ```
 
+Optional additional column:
+
+```text
+peak_set
+```
+
 ## Mode 2: Auto from `samples_master`
 
 Required columns:
@@ -25,25 +31,26 @@ sample_id,condition
 ```
 Optional columns used:
 ```text
-is_control,enabled
+library_type,is_control,enabled
 ```
 
 Auto behavior:
 - resolves BAM from `${chipfilter_output}/${sample_id}*.clean.bam`
-- resolves peak file from IDR output:
-  - default (`frip_peak_mode=condition`): `${condition}_idr.sorted.chr.narrowPeak`
-  - optional (`frip_peak_mode=sample`): `${sample_id}_idr.sorted.chr.narrowPeak`
+- resolves peak files from:
+  - `${idr_output}/${condition}_idr.sorted.chr.narrowPeak`
+  - `${peak_consensus_output}/${condition}_consensus.bed`
+- default peak sources: `idr,consensus`
 - by default excludes control samples (`frip_include_controls=false`)
 
 ## Output
 
 Output directory: `${project_folder}/${frip_output}`
 
-Per sample:
-- `<sample>.frip.tsv`
+Per sample and peak set:
+- `<sample>.<peak_set>.frip.tsv`
 
 Columns:
-- `sample`, `bam`, `peaks`, `in_peaks`, `total_mapped`, `FRiP`
+- `sample`, `peak_set`, `bam`, `peaks`, `in_peaks`, `total_mapped`, `FRiP`
 
 ## Run
 
@@ -57,7 +64,8 @@ Auto from `samples_master`:
 nextflow run main.nf -profile hpc \
   --samples_master /path/to/samples_master.csv \
   --chipfilter_output /path/to/nf-chipfilter/chipfilter_output \
-  --idr_output /path/to/nf-idr/idr_output
+  --idr_output /path/to/nf-idr/idr_output \
+  --peak_consensus_output /path/to/nf-peak-consensus/peak_consensus_output
 ```
 
 Resume:

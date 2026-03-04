@@ -4,17 +4,17 @@ nextflow.enable.dsl=2
 def frip_output = params.frip_output ?: 'frip_output'
 
 process compute_frip {
-  tag "${sample_id}"
+  tag "${sample_id}.${peak_set}"
   stageInMode 'symlink'
   stageOutMode 'move'
 
   publishDir "${params.project_folder}/${frip_output}", mode: 'copy'
 
   input:
-    tuple val(sample_id), path(bam), path(peaks)
+    tuple val(sample_id), val(peak_set), path(bam), path(peaks)
 
   output:
-    path("${sample_id}.frip.tsv")
+    path("${sample_id}.${peak_set}.frip.tsv")
 
   script:
   """
@@ -41,8 +41,8 @@ process compute_frip {
     frip=\$(awk -v a="\$in_peaks" -v b="\$total_mapped" 'BEGIN{printf "%.6f", a/b}')
   fi
 
-  printf "sample\tbam\tpeaks\tin_peaks\ttotal_mapped\tFRiP\n%s\t%s\t%s\t%s\t%s\t%s\n" \
-    "${sample_id}" "${bam}" "${peaks}" "\$in_peaks" "\$total_mapped" "\$frip" > ${sample_id}.frip.tsv
+  printf "sample\tpeak_set\tbam\tpeaks\tin_peaks\ttotal_mapped\tFRiP\n%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+    "${sample_id}" "${peak_set}" "${bam}" "${peaks}" "\$in_peaks" "\$total_mapped" "\$frip" > ${sample_id}.${peak_set}.frip.tsv
   """
 }
 
@@ -56,11 +56,12 @@ workflow {
       .map { row ->
         assert row.sample_id && row.bam && row.peaks : "frip_samplesheet must contain: sample_id,bam,peaks"
         def sid = row.sample_id.toString().trim()
+        def peakSet = (row.peak_set ?: row.source ?: 'custom').toString().trim()
         def b = file(row.bam.toString())
         def p = file(row.peaks.toString())
         assert b.exists() : "BAM not found for ${sid}: ${b}"
         assert p.exists() : "Peak file not found for ${sid}: ${p}"
-        tuple(sid, b, p)
+        tuple(sid, peakSet, b, p)
       }
   } else if (params.samples_master) {
     def master = file(params.samples_master)
@@ -91,14 +92,28 @@ workflow {
     def isControl = { rec ->
       rec.is_control?.toString()?.trim()?.toLowerCase() == 'true'
     }
+    def isChip = { rec ->
+      def lt = rec.library_type?.toString()?.trim()?.toLowerCase()
+      !isControl(rec) && (lt == null || lt == '' || lt == 'chip')
+    }
 
     def includeControls = (params.frip_include_controls == null) ? false : params.frip_include_controls
-    def peakMode = (params.frip_peak_mode ?: 'condition').toString()
-    def peakSuffix = (params.frip_peak_suffix ?: '_idr.sorted.chr.narrowPeak').toString()
+    def peakSources = (params.frip_peak_sources ?: 'idr,consensus')
+      .toString()
+      .split(',')
+      *.trim()
+      .findAll { it }
+      .unique()
     def bamDir = file(params.chipfilter_output)
     def idrDir = file(params.idr_output)
+    def consensusDir = file(params.peak_consensus_output)
     assert bamDir.exists() : "chipfilter_output not found: ${params.chipfilter_output}"
-    assert idrDir.exists() : "idr_output not found: ${params.idr_output}"
+    if (peakSources.contains('idr')) {
+      assert idrDir.exists() : "idr_output not found: ${params.idr_output}"
+    }
+    if (peakSources.contains('consensus')) {
+      assert consensusDir.exists() : "peak_consensus_output not found: ${params.peak_consensus_output}"
+    }
 
     def resolveBam = { sid ->
       def hits = bamDir.listFiles()?.findAll { f ->
@@ -109,25 +124,37 @@ workflow {
       file(hits[0].toString())
     }
 
+    def resolvePeak = { cond, sid, src ->
+      if (src == 'idr') {
+        def peaks = file("${params.idr_output}/${cond}${params.idr_peak_suffix}")
+        assert peaks.exists() : "IDR peak file not found for sample '${sid}': ${peaks}"
+        return peaks
+      }
+      if (src == 'consensus') {
+        def peaks = file("${params.peak_consensus_output}/${cond}${params.consensus_peak_suffix}")
+        assert peaks.exists() : "Consensus peak file not found for sample '${sid}': ${peaks}"
+        return peaks
+      }
+      throw new IllegalArgumentException("Unsupported FRiP peak source: ${src}")
+    }
+
     def rows = records
       .findAll { rec -> isEnabled(rec) }
-      .findAll { rec -> includeControls ? true : !isControl(rec) }
-      .collect { rec ->
+      .findAll { rec -> includeControls ? true : isChip(rec) }
+      .collectMany { rec ->
         def sid = rec.sample_id?.toString()?.trim()
         def cond = rec.condition?.toString()?.trim()
-        if (!sid || !cond) return null
+        if (!sid || !cond) return []
         def bam = resolveBam(sid)
-        def peakName = (peakMode == 'sample') ? "${sid}${peakSuffix}" : "${cond}${peakSuffix}"
-        def peaks = file("${params.idr_output}/${peakName}")
-        assert peaks.exists() : "Peak file not found for sample '${sid}': ${peaks}"
-        [sid: sid, bam: bam, peaks: peaks]
+        peakSources.collect { src ->
+          [sid: sid, peakSet: src, bam: bam, peaks: resolvePeak(cond, sid, src)]
+        }
       }
-      .findAll { it != null }
 
     input_ch = Channel
       .fromList(rows)
       .ifEmpty { exit 1, "ERROR: No FRiP input rows generated from samples_master: ${params.samples_master}" }
-      .map { r -> tuple(r.sid, r.bam, r.peaks) }
+      .map { r -> tuple(r.sid, r.peakSet, r.bam, r.peaks) }
   } else {
     exit 1, "ERROR: Provide --frip_samplesheet (existing file) or --samples_master for auto FRiP input."
   }
