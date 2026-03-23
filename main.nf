@@ -98,7 +98,7 @@ workflow {
     }
 
     def includeControls = (params.frip_include_controls == null) ? false : params.frip_include_controls
-    def peakSources = (params.frip_peak_sources ?: 'idr,consensus')
+    def peakSources = (params.frip_peak_sources ?: 'idr,consensus_q0.01,consensus_q0.05')
       .toString()
       .split(',')
       *.trim()
@@ -111,7 +111,7 @@ workflow {
     if (peakSources.contains('idr')) {
       assert idrDir.exists() : "idr_output not found: ${params.idr_output}"
     }
-    if (peakSources.contains('consensus')) {
+    if (peakSources.any { it in ['consensus', 'consensus_q0.01', 'consensus_q0.05', 'universe_q0.01', 'universe_q0.05'] }) {
       assert consensusDir.exists() : "peak_consensus_output not found: ${params.peak_consensus_output}"
     }
 
@@ -130,9 +130,24 @@ workflow {
         assert peaks.exists() : "IDR peak file not found for sample '${sid}': ${peaks}"
         return peaks
       }
-      if (src == 'consensus') {
-        def peaks = file("${params.peak_consensus_output}/${cond}${params.consensus_peak_suffix}")
+      if (src == 'consensus' || src == 'consensus_q0.01') {
+        def peaks = file("${params.peak_consensus_output}/strict_q0.01/${cond}${params.consensus_peak_suffix}")
         assert peaks.exists() : "Consensus peak file not found for sample '${sid}': ${peaks}"
+        return peaks
+      }
+      if (src == 'consensus_q0.05') {
+        def peaks = file("${params.peak_consensus_output}/consensus_q0.05/${cond}${params.consensus_peak_suffix}")
+        assert peaks.exists() : "Consensus q0.05 peak file not found for sample '${sid}': ${peaks}"
+        return peaks
+      }
+      if (src == 'universe_q0.01') {
+        def peaks = file("${params.peak_consensus_output}/strict_q0.01/universe_peaks.bed")
+        assert peaks.exists() : "Universe q0.01 peak file not found for sample '${sid}': ${peaks}"
+        return peaks
+      }
+      if (src == 'universe_q0.05') {
+        def peaks = file("${params.peak_consensus_output}/consensus_q0.05/universe_peaks.bed")
+        assert peaks.exists() : "Universe q0.05 peak file not found for sample '${sid}': ${peaks}"
         return peaks
       }
       throw new IllegalArgumentException("Unsupported FRiP peak source: ${src}")

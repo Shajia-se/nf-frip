@@ -38,8 +38,9 @@ Auto behavior:
 - resolves BAM from `${chipfilter_output}/${sample_id}*.clean.bam`
 - resolves peak files from:
   - `${idr_output}/${condition}_idr.sorted.chr.narrowPeak`
-  - `${peak_consensus_output}/${condition}_consensus.bed`
-- default peak sources: `idr,consensus`
+  - `${peak_consensus_output}/strict_q0.01/${condition}_consensus.bed`
+  - `${peak_consensus_output}/consensus_q0.05/${condition}_consensus.bed`
+- default peak sources: `idr,consensus_q0.01,consensus_q0.05`
 - by default excludes control samples (`frip_include_controls=false`)
 
 ## Output
