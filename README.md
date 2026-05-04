@@ -35,7 +35,7 @@ library_type,is_control,enabled
 ```
 
 Auto behavior:
-- resolves BAM from `${chipfilter_output}/${sample_id}*.clean.bam`
+- resolves BAM from `${chipfilter_output}/${sample_id}*.nomulti.bam`
 - resolves peak files from:
   - `${idr_output}/${condition}_idr.sorted.chr.narrowPeak`
   - `${peak_consensus_output}/strict_q0.01/${condition}_consensus.bed`
