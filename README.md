@@ -1,75 +1,51 @@
 # nf-frip
 
-Compute FRiP (Fraction of Reads in Peaks) for ChIP-seq samples.
+`nf-frip` calculates FRiP: the fraction of mapped reads that overlap peak regions.
 
-FRiP = reads overlapping peaks / total mapped reads.
+This module is optional. It can use IDR peaks, consensus peaks, or a custom FRiP samplesheet.
 
-## Input Modes (Priority Order)
+## Inputs
 
-1. `--frip_samplesheet` (explicit; if file exists)
-2. `--samples_master` auto mode
+Auto mode:
 
-## Mode 1: Explicit FRiP samplesheet
-
-Provide `--frip_samplesheet` CSV with columns:
-
-```text
-sample_id,bam,peaks
+```bash
+--samples_master /path/to/samples_master.csv
+--chipfilter_output /path/to/chipfilter_output
 ```
 
-Optional additional column:
+Select peak sources:
 
-```text
-peak_set
+```bash
+--frip_peak_sources idr,consensus_q0.01,consensus_q0.05
 ```
 
-## Mode 2: Auto from `samples_master`
+Provide only the directories required by the selected sources:
 
-Required columns:
-```text
-sample_id,condition
-```
-Optional columns used:
-```text
-library_type,is_control,enabled
-```
+- `idr` needs `--idr_output`
+- consensus sources need `--peak_consensus_output`
 
-Auto behavior:
-- resolves BAM from `${chipfilter_output}/${sample_id}*.nomulti.bam`
-- resolves peak files from:
-  - `${idr_output}/${condition}_idr.sorted.chr.narrowPeak`
-  - `${peak_consensus_output}/strict_q0.01/${condition}_consensus.bed`
-  - `${peak_consensus_output}/consensus_q0.05/${condition}_consensus.bed`
-- default peak sources: `idr,consensus_q0.01,consensus_q0.05`
-- by default excludes control samples (`frip_include_controls=false`)
+Explicit mode:
+
+```csv
+sample_id,bam,peaks,peak_set
+WT_rep1,/path/to/sample.bam,/path/to/peaks.bed,custom
+```
 
 ## Output
 
-Output directory: `${project_folder}/${frip_output}`
-
-Per sample and peak set:
-- `<sample>.<peak_set>.frip.tsv`
-
-Columns:
-- `sample`, `peak_set`, `bam`, `peaks`, `in_peaks`, `total_mapped`, `FRiP`
+```text
+${project_folder}/${frip_output}/sample.peak_set.frip.tsv
+```
 
 ## Run
 
-Explicit sheet:
-```bash
-nextflow run main.nf -profile hpc --frip_samplesheet frip_samplesheet.csv
-```
-
-Auto from `samples_master`:
 ```bash
 nextflow run main.nf -profile hpc \
   --samples_master /path/to/samples_master.csv \
-  --chipfilter_output /path/to/nf-chipfilter/chipfilter_output \
-  --idr_output /path/to/nf-idr/idr_output \
-  --peak_consensus_output /path/to/nf-peak-consensus/peak_consensus_output
+  --chipfilter_output /path/to/chipfilter_output \
+  --idr_output /path/to/idr_output \
+  --peak_consensus_output /path/to/peak_consensus_output \
+  --project_folder /path/to/output_project
 ```
 
-Resume:
-```bash
-nextflow run main.nf -profile hpc -resume
-```
+Actual execution should be tested where Nextflow is installed.
